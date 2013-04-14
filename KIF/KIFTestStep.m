@@ -631,6 +631,35 @@ typedef CGPoint KIFDisplacement;
     }];
 }
 
++ (instancetype)stepToTapItemInCollectionViewWithAccessibilityLabel:(NSString*)collectionViewLabel atIndexPath:(NSIndexPath*)indexPath
+{
+    NSString* description = [NSString stringWithFormat:@"Step to tap item %d in collection view with label %@", indexPath.item, collectionViewLabel];
+    return [self stepWithDescription:description executionBlock:^KIFTestStepResult(KIFTestStep *step, NSError *__autoreleasing *error) {
+        UIAccessibilityElement* element = [[UIApplication sharedApplication] accessibilityElementWithLabel:collectionViewLabel];
+        KIFTestCondition(element, error, @"View with label %@ not found", collectionViewLabel);
+        UICollectionView* collectionView = (UICollectionView*)[UIAccessibilityElement viewContainingAccessibilityElement:element];
+
+        KIFTestCondition([collectionView isKindOfClass:[UICollectionView class]], error, @"Specified view is not a UICollectionView");
+        KIFTestCondition(collectionView, error, @"Collection view with label %@ not found", collectionViewLabel);
+
+        UICollectionViewCell* cell = [collectionView cellForItemAtIndexPath:indexPath];
+        if(!cell)
+        {
+            KIFTestCondition(indexPath.section < [collectionView numberOfSections], error, @"Section %d is not found in '%@' collection view", indexPath.section, collectionViewLabel);
+            KIFTestCondition(indexPath.item < [collectionView numberOfItemsInSection:indexPath.section], error, @"Item %d is not found in section %d of '%@' collection view", indexPath.item, indexPath.section, collectionViewLabel);
+            [collectionView scrollToItemAtIndexPath:indexPath atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally animated:YES];
+            [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.25]];
+            cell = [collectionView cellForItemAtIndexPath:indexPath];
+        }
+        KIFTestCondition(cell, error, @"Collection view cell at index path %@ not found", indexPath);
+
+        id d = collectionView.delegate;
+        [d collectionView:collectionView didSelectItemAtIndexPath:indexPath];
+
+        return KIFTestStepResultSuccess;
+    }];
+}
+
 #define NUM_POINTS_IN_SWIPE_PATH 20
 
 + (id)stepToSwipeViewWithAccessibilityLabel:(NSString *)label inDirection:(KIFSwipeDirection)direction
